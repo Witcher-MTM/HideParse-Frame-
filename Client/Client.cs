@@ -36,22 +36,7 @@ namespace Client_
             this.Ip = socket.RemoteEndPoint.ToString();
         }
 
-        public bool SendInfo(HistoryItem historyItem)
-        {
-            bool check = false;
-            try
-            {
-                string json = string.Empty;
-                json = JsonSerializer.Serialize<HistoryItem>(historyItem);
-                socket.Send(Encoding.Unicode.GetBytes(json));
-                check = true;
-            }
-            catch (Exception)
-            {
-                check = false;
-            }
-            return check;
-        }
+        
         public StringBuilder GetInfo()
         {
             byte[] data = new byte[1024];
