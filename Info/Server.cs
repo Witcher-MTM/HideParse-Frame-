@@ -65,22 +65,17 @@ namespace Info
                 clients.Add(new Client(socketclient));
                 this.Client_ID++;
                 clients[clients.Count - 1].ID = this.Client_ID;
-                Console.WriteLine("New player has been conected");
-                Console.WriteLine($"Clients - {clients.Count}\n{clients.Last().socket.RemoteEndPoint.ToString()}");
-                tasks.Last().Start();
-                Console.WriteLine("New task for new player started");
             }
         }
        
 
         public string GetMsg()
         {       
-           
             int bytes = 0;
             StringBuilder stringBuilder = new StringBuilder();
             do
             {
-                bytes = socketclient.Receive(data);
+                bytes = ClientsSocket.Last().Receive(data);
                 stringBuilder.Append(Encoding.Unicode.GetString(data, 0, bytes));
             } while (socketclient.Available > 0);
 
@@ -94,7 +89,7 @@ namespace Info
             }
             sqlConnection = new SqlConnection(connectionstr);
             sqlConnection.Open();
-            Console.WriteLine("Connected SQL");
+           
         }
     }
 }

